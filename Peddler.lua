@@ -550,11 +550,18 @@ local function HandleEvent(self, event, ...)
         Peddler._BuybackWatcherEnabled=false
         Peddler._BuybackBaseline=nil
 
-    elseif event=="MERCHANT_SHOW" then
-        Peddler._BuybackWatcherEnabled=false
-        Peddler._BuybackBaseline=nil
-        if Peddler.InitHistoryButton then Peddler.InitHistoryButton() end
-        PeddleGoods()
+	elseif event=="MERCHANT_SHOW" then
+		Peddler._BuybackWatcherEnabled=false
+		Peddler._BuybackBaseline=nil
+		if Peddler.InitHistoryButton then Peddler.InitHistoryButton() end
+		PeddleGoods()
+
+		-- Show delete confirmation if there are unsellables flagged
+		if DeleteUnsellablesEnabled and Peddler and Peddler.ItemDelete and Peddler.ItemDelete.MaybeShowPopup then
+			Peddler.RunAfter(0.05, function()
+				Peddler.ItemDelete.MaybeShowPopup()
+			end)
+		end
 
     elseif event=="MERCHANT_UPDATE" then
         DetectNewManualBuys()
