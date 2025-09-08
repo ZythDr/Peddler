@@ -268,7 +268,7 @@ end
 local function LogCompletionCheck()
     if not Peddler._autoSellingActive then return end
     if Peddler._autoLoggedCount>=Peddler._autoScheduledCount then
-        RunAfter(0.02, FinalizeAutoSelling)
+        RunAfter(0.1, FinalizeAutoSelling)
     end
 end
 
