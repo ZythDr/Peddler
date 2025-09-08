@@ -66,7 +66,7 @@ No surprises. No auto-delete.
 ## History & Tracking
 
 Open with `/peddler history`:
-- See a scrollable list of sales, buybacks, deletions.
+- See a scrollable list of sales (automatic + manual), buybacks, deletions(by peddler).
 - Filter by reason (manual, quality, deleted, etc.).
 - Search by name.
 - Session profit shown at the bottom.
@@ -79,9 +79,6 @@ Open with `/peddler history`:
 |------------|---------|
 | Yellow coin | Will be auto-sold at vendor |
 | Red coin | Manually flagged for deletion (no value) |
-| No icon | Neutral / untouched |
-
-Greys may not show a manual toggle—they are automatically handled unless you exclude them.
 
 ---
 
@@ -101,17 +98,6 @@ You can change any of these later.
 - Nothing rare or epic is sold unless you explicitly enable it.
 - Buyback is still possible for normal vendor sales (unless deleted).
 - Deletion is permanent — only confirm if you’re sure.
-
----
-
-## Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| Setup didn’t appear | `/peddler setup` |
-| Icons not updating | Reopen bags or relog |
-| History empty | Sell something first |
-| Deleted something by mistake | If it was deleted (not sold), it’s gone |
 
 ---
 
