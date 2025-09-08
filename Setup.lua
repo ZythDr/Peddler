@@ -1,11 +1,4 @@
 -- Peddler Setup Wizard
--- Revision: Add explicit "Continue" button to Step 3 (modifier dropdown).
--- Notes:
---   * Reuses the existing qualityContinue button (renamed here logically in comments) for both
---     Step 3 (modifier selection) and Step 4 (quality filters).
---   * The button now appears on Step 3 so the user manually confirms their modifier choice.
---   * No auto-advance occurs when picking a modifier; user must click Continue.
---   * All previous sync logic, scroll wheel, and dropdown left offset retained.
 
 local addonName, Peddler = ...
 _G.Peddler = _G.Peddler or Peddler
@@ -614,4 +607,5 @@ loader:SetScript("OnEvent", function(_,_,name)
 			if t>=1 then fr:SetScript("OnUpdate", nil); Peddler.StartSetupWizard(false) end
 		end)
 	end
+
 end)
