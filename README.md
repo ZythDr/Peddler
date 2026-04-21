@@ -5,7 +5,7 @@ Peddler automatically flags and sells the junk you don't want—while keeping yo
 
 ---
 
-## What It Does (In Plain Terms)
+## What It Does
 
 - Auto-flags and sells: Poor (grey) items by default.  
 - Lets you decide: Optional selling of other qualities and class-unusable gear.  
