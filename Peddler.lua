@@ -463,6 +463,29 @@ local function ToggleSellFlag(itemID, unique)
     end
     return true
 end
+
+function Peddler.GetButtonBagSlot(btn)
+    if not btn then return end
+
+    local slot = btn.GetID and btn:GetID()
+    if type(slot) ~= "number" or slot < 1 then
+        return
+    end
+
+    if btn.GetBag then
+        local bag = btn:GetBag()
+        if type(bag) == "number" then
+            return bag, slot
+        end
+    end
+
+    local parent = btn.GetParent and btn:GetParent()
+    local bag = parent and parent.GetID and parent:GetID()
+    if type(bag) == "number" then
+        return bag, slot
+    end
+end
+
 local function HandleItemClick(btn, button)
     local ctrl,shift,alt=IsControlKeyDown(),IsShiftKeyDown(),IsAltKeyDown()
     local mod =
@@ -473,8 +496,8 @@ local function HandleItemClick(btn, button)
         (ModifierKey=="CTRL-ALT" and ctrl and alt) or
         (ModifierKey=="ALT-SHIFT" and alt and shift)
     if not (mod and button=="RightButton") then return end
-    local parent=btn:GetParent(); if not parent then return end
-    local bag,slot=parent:GetID(),btn:GetID()
+    local bag,slot=Peddler.GetButtonBagSlot(btn)
+    if not bag or not slot then return end
     local link=GetContainerItemLink(bag,slot); if not link then return end
     local itemID, unique=Peddler.ParseItemLink(link); if not itemID then return end
     local _,_,_,_,_,_,_,_,_,_,price=GetItemInfo(itemID)

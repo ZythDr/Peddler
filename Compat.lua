@@ -73,6 +73,16 @@ local function CheckItem(bag, slot, btn)
 	end
 end
 
+local function CheckButton(btn)
+	local bag, slot
+	if Peddler.GetButtonBagSlot then
+		bag, slot = Peddler.GetButtonBagSlot(btn)
+	end
+	if bag and slot then
+		CheckItem(bag, slot, btn)
+	end
+end
+
 --------------------------------------------------
 -- Individual addon scanners (ported from original)
 --------------------------------------------------
@@ -98,8 +108,23 @@ local function markCombuctorBags()
 		for slot=1,36 do
 			local btn=_G["ContainerFrame"..(bag+1).."Item"..slot]
 			if btn then
-				local p=btn:GetParent()
-				if p then CheckItem(p:GetID(), btn:GetID(), btn) end
+				CheckButton(btn)
+			end
+		end
+	end
+end
+
+local function markDragonUICombuctorBags()
+	local misses = 0
+	for itemID = 1, 512 do
+		local btn = _G["DragonUI_CombuctorItem"..itemID]
+		if btn then
+			misses = 0
+			CheckButton(btn)
+		else
+			misses = misses + 1
+			if misses >= 32 then
+				break
 			end
 		end
 	end
@@ -264,6 +289,8 @@ end
 function Peddler.MarkWares()
 	if IsAddOnLoaded("Baggins") then
 		markBagginsBags()
+	elseif _G.DragonUI_CombuctorFrame1 or _G.DragonUI_CombuctorItem1 then
+		markDragonUICombuctorBags()
 	elseif IsAddOnLoaded("Combuctor") or IsAddOnLoaded("Bagnon") then
 		markCombuctorBags()
 	elseif IsAddOnLoaded("OneBag3") then
