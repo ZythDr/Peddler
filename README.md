@@ -86,9 +86,10 @@ Open with `/peddler history`:
 
 Peddler supports the default Blizzard bags plus compatibility paths for several bag addons.
 
-- DragonUI integrated Combuctor is supported as of v1.4.
-- DragonUI support covers coin overlay indicators and modifier + right-click item flagging inside the integrated Combuctor bags.
-- Existing standalone Combuctor and Bagnon compatibility remains in place.
+- DragonUI's Combuctor bags are supported as of v1.4.
+- ElvUI bags are supported.
+- Bagnon bags are supported.
+- Combuctor bags are supported.
 
 ---
 
