@@ -60,6 +60,7 @@ Peddler._SaleLedger             = Peddler._SaleLedger or {}
 Peddler._BuybackBaseline        = Peddler._BuybackBaseline or nil
 Peddler._BuybackWatcherEnabled  = Peddler._BuybackWatcherEnabled or false
 Peddler._ManualSaleDedupe       = Peddler._ManualSaleDedupe or {}
+Peddler._manualSaleHookSuppressed = Peddler._manualSaleHookSuppressed or false
 Peddler._LastMoney              = Peddler._LastMoney or (GetMoney and GetMoney() or 0)
 
 if not PeddlerHistorySessionSalesNet then
@@ -75,6 +76,12 @@ local function Dbg(...)
 end
 
 local function RunAfter(d,f) Peddler.RunAfter(d,f) end
+
+local function UseContainerItemForAutoSell(bag, slot)
+    Peddler._manualSaleHookSuppressed = true
+    UseContainerItem(bag, slot)
+    Peddler._manualSaleHookSuppressed = false
+end
 
 function Peddler.RequestMarkWares(delay)
     if Peddler._markWaresPending then return end
@@ -258,17 +265,39 @@ function Peddler.LogSale(itemID, link, amount, priceCopper, reason)
 end
 
 -- Buyback baseline
+local function BuildBuybackKey(link, name, price, qty)
+    if link then
+        return link.."@"..(price or 0).."@"..(qty or 1)
+    end
+    return "NOLINK:"..(name or "?").."@"..(price or 0).."@"..(qty or 1)
+end
+
+local function AddManualSaleDedupe(key)
+    if not key then return end
+    Peddler._ManualSaleDedupe[key] = (Peddler._ManualSaleDedupe[key] or 0) + 1
+end
+
+local function ConsumeManualSaleDedupe(key, count)
+    count = count or 0
+    local logged = Peddler._ManualSaleDedupe[key] or 0
+    if logged <= 0 then return count end
+
+    local consumed = math.min(logged, count)
+    logged = logged - consumed
+    if logged > 0 then
+        Peddler._ManualSaleDedupe[key] = logged
+    else
+        Peddler._ManualSaleDedupe[key] = nil
+    end
+    return count - consumed
+end
+
 local function BuildBuybackSnapshot()
     local snap={}
     for i=1,(GetNumBuybackItems() or 0) do
         local link=GetBuybackItemLink(i)
         local name, _, price, qty = GetBuybackItemInfo(i)
-        local key
-        if link then
-            key = link.."@"..(price or 0).."@"..(qty or 1)
-        else
-            key = "NOLINK:"..(name or "?").."@"..(price or 0).."@"..(qty or 1)
-        end
+        local key = BuildBuybackKey(link, name, price, qty)
         snap[key]=(snap[key] or 0)+1
     end
     return snap
@@ -286,6 +315,7 @@ end
 local function CaptureBuybackBaseline()
     Peddler._BuybackBaseline = BuildBuybackSnapshot()
     Peddler._BuybackWatcherEnabled = true
+    Peddler._ManualSaleDedupe = {}
     Dbg("Baseline captured; watcher enabled.")
 end
 
@@ -304,19 +334,41 @@ local function DetectNewManualBuys()
             local itemID = link and tonumber(link:match("|Hitem:(%d+):"))
             local totalPrice = stackPrice -- already total stack price per GetBuybackItemInfo
             local saleKey = key
-            if not Peddler._ManualSaleDedupe[saleKey] then
-                -- Log once per new stack instance (delta times)
-                for _=1,delta do
-                    Peddler.LogSale(itemID or 0, link or head, stackQty, totalPrice, "manualsell")
-                end
-                Peddler._ManualSaleDedupe[saleKey]=true
+            local fallbackDelta = ConsumeManualSaleDedupe(saleKey, delta)
+            for _=1,fallbackDelta do
+                Peddler.LogSale(itemID or 0, link or head, stackQty, totalPrice, "manualsell")
             end
         end
     end
     Peddler._BuybackBaseline = current
+    Peddler._ManualSaleDedupe = {}
 end
 
--- Auto-sell Engine (unchanged except finalize baseline scheduling)
+local function TrackManualContainerSale(bag, slot)
+    if Peddler._manualSaleHookSuppressed then return end
+    if not (MerchantFrame and MerchantFrame:IsShown()) then return end
+    if type(bag) ~= "number" or type(slot) ~= "number" then return end
+
+    local link = GetContainerItemLink(bag, slot)
+    if not link then return end
+
+    local itemID = Peddler.ParseItemLink(link)
+    if not itemID then return end
+
+    local _, count = GetContainerItemInfo(bag, slot)
+    count = count or 1
+
+    local name,_,_,_,_,_,_,_,_,_,unitPrice = GetItemInfo(itemID)
+    if not unitPrice or unitPrice <= 0 then return end
+
+    local totalPrice = unitPrice * count
+    AddManualSaleDedupe(BuildBuybackKey(link, name, totalPrice, count))
+    Peddler.LogSale(itemID, link, count, totalPrice, "manualsell")
+end
+
+Hook("UseContainerItem", TrackManualContainerSale)
+
+-- Auto-sell Engine
 local function PrintSaleLine(i,total,link,count,value)
     if Silent or SilenceSaleSummary then return end
     local msg=" "..i.."/"..total..": "..(link or "?")
@@ -350,7 +402,7 @@ local function SellNextSequential()
     local price=entry.price
     local reason=entry.reason
     local value=(price or 0)*count
-    UseContainerItem(bag,slot)
+    UseContainerItemForAutoSell(bag,slot)
     if not Silent and i==1 and not SilenceSaleSummary then
         print("Peddler is selling "..#Peddler._sellQueue.." item(s):")
     end
@@ -396,7 +448,7 @@ local function SellWave()
             local reason=e.reason
             local val=(price or 0)*count
             Peddler._currentBatchTotal=Peddler._currentBatchTotal+val
-            UseContainerItem(bag,slot)
+            UseContainerItemForAutoSell(bag,slot)
             if price and price>0 then PrintSaleLine(i,#q,link,count,val) end
             Peddler.LogSale(itemID, link or ("item:"..itemID), count, val, reason)
             Peddler._autoLoggedCount=Peddler._autoLoggedCount+1
@@ -659,6 +711,7 @@ local function HandleEvent(self, event, ...)
 	elseif event=="MERCHANT_SHOW" then
 		Peddler._BuybackWatcherEnabled=false
 		Peddler._BuybackBaseline=nil
+		Peddler._ManualSaleDedupe={}
 		if Peddler.InitHistoryButton then Peddler.InitHistoryButton() end
 		PeddleGoods()
 

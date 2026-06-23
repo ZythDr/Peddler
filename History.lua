@@ -72,6 +72,24 @@ local FILTER_OPTIONS = {
 	{ text="Buyback", value="buyback", group=4 },
 	{ text="Deleted", value="deleted", group=4 },
 }
+local function GetFilterOptionText(value)
+	for _,opt in ipairs(FILTER_OPTIONS) do
+		if opt.value == value then return opt.text end
+	end
+	return "All"
+end
+local function SetFilterDropdownValue(dropdown, value)
+	if not dropdown then return end
+	UIDropDownMenu_SetSelectedValue(dropdown, value)
+	local text = GetFilterOptionText(value)
+	if UIDropDownMenu_SetText then
+		UIDropDownMenu_SetText(dropdown, text)
+	else
+		local name = dropdown.GetName and dropdown:GetName()
+		local textFrame = name and _G[name.."Text"]
+		if textFrame then textFrame:SetText(text) end
+	end
+end
 local QUALITY_REASON = { grey=true, common=true, uncommon=true, rare=true, epic=true }
 local QUALITY_TOKEN  = { [0]="grey",[1]="common",[2]="uncommon",[3]="rare",[4]="epic" }
 
@@ -486,7 +504,7 @@ local function InitializeFilterDropdown(self, level)
 				info.value=opt.value
 				info.func=function(btn)
 					currentReasonFilter=btn.value
-					UIDropDownMenu_SetSelectedValue(self, btn.value)
+					SetFilterDropdownValue(self, btn.value)
 					atBottomStick = true
 					userScrollOverride = false
 					Peddler.UpdateHistoryUI()
@@ -514,6 +532,7 @@ function Peddler.ResetHistoryWindow()
 	PeddlerHistoryFrameState.width=DEFAULT_FRAME_WIDTH
 	PeddlerHistoryFrameState.height=DEFAULT_FRAME_HEIGHT
 	PeddlerHistoryFrameState.scrollOffset=0
+	SetFilterDropdownValue(PeddlerHistoryFilterDropdown,currentReasonFilter)
 	userScrollOverride=false
 	atBottomStick=true
 	if PeddlerHistoryFrame then
@@ -623,12 +642,12 @@ local function CreateHistoryFrame()
 	contentFrame:SetAllPoints(fauxScrollFrame)
 
 	fillerBG=contentFrame:CreateTexture(nil,"BACKGROUND")
-	fillerBG:SetColorTexture(0,0,0,0.04)
+	SafeSetTexColor(fillerBG,0,0,0,0.04)
 	fillerBG:SetPoint("TOPLEFT",contentFrame,"TOPLEFT",0,-HEADER_HEIGHT)
 	fillerBG:SetPoint("BOTTOMRIGHT",contentFrame,"BOTTOMRIGHT",0,0)
 
 	headerBG=contentFrame:CreateTexture(nil,"ARTWORK")
-	headerBG:SetColorTexture(0,0,0,0.45)
+	SafeSetTexColor(headerBG,0,0,0,0.45)
 	headerBG:SetPoint("TOPLEFT",contentFrame,"TOPLEFT",0,0)
 	headerBG:SetHeight(HEADER_HEIGHT)
 
@@ -641,7 +660,7 @@ local function CreateHistoryFrame()
 
 	for i=1,4 do
 		local tex=contentFrame:CreateTexture(nil,"ARTWORK")
-		tex:SetColorTexture(1,1,1,0.05)
+		SafeSetTexColor(tex,1,1,1,0.05)
 		separators[i]=tex
 	end
 
@@ -649,7 +668,7 @@ local function CreateHistoryFrame()
 	filterDrop:SetPoint("TOPRIGHT",f,"TOPRIGHT",-10,-34)
 	UIDropDownMenu_Initialize(filterDrop,InitializeFilterDropdown)
 	UIDropDownMenu_SetWidth(filterDrop,180)
-	UIDropDownMenu_SetSelectedValue(filterDrop,currentReasonFilter)
+	SetFilterDropdownValue(filterDrop,currentReasonFilter)
 
 	local searchBox=CreateFrame("EditBox","PeddlerHistorySearchBox",f,"InputBoxTemplate")
 	searchBox:SetSize(SEARCH_BOX_WIDTH,20)

@@ -10,8 +10,7 @@ Peddler automatically flags and sells the junk you don't want—while keeping yo
 - Auto-flags and sells: Poor (grey) items by default.  
 - Lets you decide: Optional selling of other qualities and class-unusable gear.  
 - Account-wide class filters: Choose which armor and weapon subtypes each class considers wanted.  
-- Equipment set protection: Prevents exact bag slots used by Blizzard equipment sets from being flagged or sold.  
-- Safe by design: Nothing gets auto-flagged unless you choose it.  
+- Safe by design: Nothing gets auto-flagged unless you choose it. Peddler also features a Equipment set protection where items belonging to a gear set can never be sold by Peddler.  
 - Manual control: Hold your chosen modifier + right-click to toggle sell (or delete for valueless items).  
 - History window: See what was sold, how much you made, and buybacks.  
 - Optional deletion: Manually flag unsellable (no vendor price) items for permanent removal—with a confirmation.  
@@ -67,7 +66,13 @@ Unchecked subtypes are treated as unwanted when **Unwanted Items** auto-selling 
 
 Enable **Protect Equipment Set Items** in `/peddler config` to keep items used by Blizzard Equipment Manager sets from being manually flagged or auto-sold.
 
-Protection is based on the exact bag slot referenced by the equipment set, so a duplicate item in another slot can still be flagged.
+Protection is based on the exact bag slot referenced by the equipment set, not just the item ID. This means:
+
+- An item currently assigned to an equipment set is protected.
+- A duplicate matching item in another bag slot can still be flagged or sold.
+- Yellow and red coin overlays are hidden for protected equipment-set slots.
+
+This option is per-character because Blizzard equipment sets are per-character.
 
 ---
 
@@ -106,9 +111,10 @@ Open with `/peddler history`:
 Peddler supports the default Blizzard bags plus compatibility paths for several bag addons.
 
 - DragonUI's Combuctor bags are supported as of v1.4.
-- ElvUI bags are supported.
+- ElvUI (v6.09) bags are supported. (will not work with Crumdidlyumshis' v7.0 ElvUI fork)
 - Bagnon bags are supported.
 - Combuctor bags are supported.
+- Guda bags are supported.
 
 ---
 
@@ -126,6 +132,7 @@ You can change any of these later.
 ## Safety Notes
 
 - Nothing rare or epic is sold unless you explicitly enable it.
+- Equipment-set protection prevents set-assigned bag slots from being flagged, sold, or deleted when enabled.
 - Buyback is still possible for normal vendor sales (unless deleted).
 - Deletion is permanent — only confirm if you’re sure.
 
