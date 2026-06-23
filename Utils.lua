@@ -102,16 +102,8 @@ function Peddler.IsUnwantedClassItem(itemType, subType, equipSlot)
 	if equipSlot == "INVTYPE_CLOAK" then return false end
 	if not (itemType == Peddler.WEAPON or itemType == Peddler.ARMOUR) then return false end
 
-	local classMap = Peddler.WANTED_ITEMS and Peddler.WANTED_ITEMS[CLASS_TAG]
-	if classMap then
-		local allowed = classMap[itemType]
-		if allowed then
-			for _, accepted in ipairs(allowed) do
-				if subType == accepted then
-					return false
-				end
-			end
-		end
+	if Peddler.IsWantedItemForClass and Peddler.IsWantedItemForClass(CLASS_TAG, itemType, subType) then
+		return false
 	end
 	return true
 end

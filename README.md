@@ -9,6 +9,8 @@ Peddler automatically flags and sells the junk you don't want—while keeping yo
 
 - Auto-flags and sells: Poor (grey) items by default.  
 - Lets you decide: Optional selling of other qualities and class-unusable gear.  
+- Account-wide class filters: Choose which armor and weapon subtypes each class considers wanted.  
+- Equipment set protection: Prevents exact bag slots used by Blizzard equipment sets from being flagged or sold.  
 - Safe by design: Nothing gets auto-flagged unless you choose it.  
 - Manual control: Hold your chosen modifier + right-click to toggle sell (or delete for valueless items).  
 - History window: See what was sold, how much you made, and buybacks.  
@@ -49,6 +51,23 @@ Peddler automatically flags and sells the junk you don't want—while keeping yo
   - If it has NO vendor price: Toggles delete flag (red coin icon).
 - Modifier key is chosen in setup or options (Ctrl / Alt / Shift or combos).
 - You can always unmark anything.
+
+---
+
+## Wanted Item Filters
+
+Open `/peddler config`, then select **Peddler > Wanted Items** to edit each class's wanted armor and weapon subtypes.  
+These filters are account-wide, so every Warrior uses the same Warrior filter, every Mage uses the same Mage filter, and so on.
+
+Unchecked subtypes are treated as unwanted when **Unwanted Items** auto-selling is enabled.
+
+---
+
+## Equipment Set Protection
+
+Enable **Protect Equipment Set Items** in `/peddler config` to keep items used by Blizzard Equipment Manager sets from being manually flagged or auto-sold.
+
+Protection is based on the exact bag slot referenced by the equipment set, so a duplicate item in another slot can still be flagged.
 
 ---
 

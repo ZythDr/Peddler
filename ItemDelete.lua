@@ -46,7 +46,7 @@ function F.Reset()
 	local c=0 for _ in pairs(ItemsToDelete) do c=c+1 end
 	for k in pairs(ItemsToDelete) do ItemsToDelete[k]=nil end
 	print("|cff33ff99Peddler:|r Reset "..c.." unsellable deletion flag"..(c==1 and "" or "s")..".")
-	if Peddler.MarkWares then Peddler.MarkWares() end
+	if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end
 end
 
 --------------------------------------------------
@@ -61,7 +61,8 @@ local function ListFlagged()
 			local link = GetContainerItemLink(bag, slot)
 			if link then
 				local itemID, unique = Peddler.ParseItemLink(link)
-				if itemID and unique and ItemsToDelete[unique] and IsUnsellable(itemID) then
+				if itemID and unique and ItemsToDelete[unique] and IsUnsellable(itemID)
+					and not (Peddler.IsEquipmentSetBagSlot and Peddler.IsEquipmentSetBagSlot(bag, slot)) then
 					local _, count = GetContainerItemInfo(bag, slot)
 					list[#list+1] = { link=link, itemID=itemID, count=count or 1 }
 				end
@@ -101,7 +102,7 @@ local function DeleteFlagged(flagged)
 		end
 	end
 	print("|cff33ff99Peddler:|r Deleted "..#flagged.." unsellable flagged item(s).")
-	if Peddler.MarkWares then Peddler.MarkWares() end
+	if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end
 end
 
 --------------------------------------------------

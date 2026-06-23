@@ -11,6 +11,7 @@ local DEFAULTS = {
     ModifierKey              = "ALT",
     IconPlacement            = "BOTTOMLEFT",
     DeleteUnsellablesEnabled = false,
+    ProtectEquipmentSetItems = true,
 
     SoulboundOnly            = true,
     AutoSellGreyItems        = true,
@@ -45,6 +46,7 @@ local floor, print = math.floor, print
 
 local coreFrame = CreateFrame("Frame")
 local markCounter, countLimit = 1, 1
+local MARKWARES_DELAY = 0.05
 
 Peddler._autoSellingActive      = Peddler._autoSellingActive or false
 Peddler._autoScheduledCount     = Peddler._autoScheduledCount or 0
@@ -74,6 +76,21 @@ end
 
 local function RunAfter(d,f) Peddler.RunAfter(d,f) end
 
+function Peddler.RequestMarkWares(delay)
+    if Peddler._markWaresPending then return end
+    Peddler._markWaresPending = true
+    Peddler._markWaresTimerFrame = Peddler._markWaresTimerFrame or CreateFrame("Frame")
+    Peddler._markWaresTimerFrame.elapsed = 0
+    Peddler._markWaresTimerFrame.delay = delay or MARKWARES_DELAY
+    Peddler._markWaresTimerFrame:SetScript("OnUpdate", function(frame, elapsed)
+        frame.elapsed = (frame.elapsed or 0) + elapsed
+        if frame.elapsed < (frame.delay or MARKWARES_DELAY) then return end
+        frame:SetScript("OnUpdate", nil)
+        Peddler._markWaresPending = false
+        if Peddler.MarkWares then Peddler.MarkWares() end
+    end)
+end
+
 local GOLD_ICON   = "Interface\\MoneyFrame\\UI-GoldIcon"
 local SILVER_ICON = "Interface\\MoneyFrame\\UI-SilverIcon"
 local COPPER_ICON = "Interface\\MoneyFrame\\UI-CopperIcon"
@@ -99,6 +116,7 @@ local function SetupDefaults()
     if not ItemsToSell   then ItemsToSell   = {} end
     if not UnmarkedItems then UnmarkedItems = {} end
     if not ItemsToDelete then ItemsToDelete = {} end
+    if Peddler.EnsureWantedItemsConfig then Peddler.EnsureWantedItemsConfig() end
     ApplyDefaultsIfNil()
 end
 
@@ -113,10 +131,58 @@ local function ModifierActive()
     return false
 end
 
+local function EquipmentSetLocationToBagSlot(location)
+    if not (location and EquipmentManager_UnpackLocation) then return end
+    local v1, v2, v3, v4, v5, v6 = EquipmentManager_UnpackLocation(location)
+    if v3 then
+        if type(v6) == "number" and type(v5) == "number" then
+            return v6, v5
+        elseif type(v5) == "number" and type(v4) == "number" then
+            return v5, v4
+        end
+    end
+end
+
+local function BuildEquipmentSetSlotMap()
+    local map = {}
+    if not (ProtectEquipmentSetItems and GetNumEquipmentSets and GetEquipmentSetInfo and GetEquipmentSetLocations) then
+        return map
+    end
+    for setIndex = 1, GetNumEquipmentSets() do
+        local setName = GetEquipmentSetInfo(setIndex)
+        if setName then
+            local locations = GetEquipmentSetLocations(setName)
+            if type(locations) == "table" then
+                for _, location in pairs(locations) do
+                    local bag, slot = EquipmentSetLocationToBagSlot(location)
+                    if type(bag) == "number" and type(slot) == "number" and bag >= 0 and bag <= 4 and slot > 0 then
+                        map[bag..":"..slot] = true
+                    end
+                end
+            end
+        end
+    end
+    return map
+end
+
+function Peddler.IsEquipmentSetBagSlot(bag, slot, slotMap)
+    if not ProtectEquipmentSetItems then return false end
+    if type(bag) ~= "number" or type(slot) ~= "number" then return false end
+    slotMap = slotMap or BuildEquipmentSetSlotMap()
+    return slotMap[bag..":"..slot] and true or false
+end
+
 function Peddler.itemIsToBeSold(itemID, unique)
     local auto = select(1, Peddler.ShouldAutoSell(itemID, unique))
     if not auto then return ItemsToSell[unique] end
     return ItemsToSell[unique] or auto
+end
+
+function Peddler.itemIsToBeSoldAtSlot(itemID, unique, bag, slot, slotMap)
+    if Peddler.IsEquipmentSetBagSlot and Peddler.IsEquipmentSetBagSlot(bag, slot, slotMap) then
+        return false
+    end
+    return Peddler.itemIsToBeSold(itemID, unique)
 end
 local function GetSaleReasonCode(itemID, unique)
     local _, link, quality = GetItemInfo(itemID)
@@ -371,13 +437,14 @@ local function PeddleGoods()
     local planned={}
     local maxQueue=SellLimit and BUYBACK_CAP or MAX_SELL_QUEUE
     local prewarm={}
+    local protectedSlots=BuildEquipmentSetSlotMap()
     for bag=0,4 do
         local slots=GetContainerNumSlots(bag)
         for slot=1,slots do
             local link=GetContainerItemLink(bag,slot)
-            if link then
+            if link and not Peddler.IsEquipmentSetBagSlot(bag, slot, protectedSlots) then
                 local itemID,unique=Peddler.ParseItemLink(link)
-                if unique and Peddler.itemIsToBeSold(itemID, unique) then
+                if unique and Peddler.itemIsToBeSoldAtSlot(itemID, unique, bag, slot, protectedSlots) then
                     local _,stack=GetContainerItemInfo(bag,slot)
                     stack=stack or 1
                     local _,_,_,_,_,_,_,_,_,_,price=GetItemInfo(itemID)
@@ -425,11 +492,12 @@ function Peddler.ResetManualFlags()
     local c=0 for _ in pairs(ItemsToSell) do c=c+1 end
     for k in pairs(ItemsToSell) do ItemsToSell[k]=nil end
     print("|cff33ff99Peddler:|r Reset "..c.." manually flagged sell item"..(c==1 and "" or "s")..".")
-    if Peddler.MarkWares then Peddler.MarkWares() end
+    if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end
 end
 function Peddler.ResetAll()
     for k,v in pairs(DEFAULTS) do _G[k]=v end
     ItemsToSell,UnmarkedItems,ItemsToDelete={}, {}, {}
+    if Peddler.ResetAllWantedItems then Peddler.ResetAllWantedItems() end
     PeddlerSalesHistory={}
     PeddlerHistoryFrameState={ width=730,height=480,scrollOffset=0 }
     PeddlerHistorySessionSalesNet=0
@@ -440,7 +508,7 @@ function Peddler.ResetAll()
     Peddler._ManualSaleDedupe={}
     Peddler._PendingPriceFix={}
     if Peddler.ResetHistoryWindow then Peddler.ResetHistoryWindow() end
-    if Peddler.MarkWares then Peddler.MarkWares() end
+    if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end
     print("|cff33ff99Peddler:|r All settings reset.")
 end
 
@@ -498,6 +566,10 @@ local function HandleItemClick(btn, button)
     if not (mod and button=="RightButton") then return end
     local bag,slot=Peddler.GetButtonBagSlot(btn)
     if not bag or not slot then return end
+    if Peddler.IsEquipmentSetBagSlot(bag, slot) then
+        print("|cff33ff99Peddler:|r This item is used by an equipment set and is protected.")
+        return
+    end
     local link=GetContainerItemLink(bag,slot); if not link then return end
     local itemID, unique=Peddler.ParseItemLink(link); if not itemID then return end
     local _,_,_,_,_,_,_,_,_,_,price=GetItemInfo(itemID)
@@ -506,7 +578,7 @@ local function HandleItemClick(btn, button)
     else
         ToggleSellFlag(itemID, unique)
     end
-    if Peddler.MarkWares then Peddler.MarkWares() end
+    if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end
 end
 Hook("ContainerFrameItemButton_OnModifiedClick", HandleItemClick)
 
@@ -525,7 +597,7 @@ local function CheckQuestReward(btn)
     test(GetQuestLogItemLink("reward", idx))
     test(GetQuestLogItemLink("choice", idx))
 end
-local function QuestRewardClick(self) if not IsAltKeyDown() then return end CheckQuestReward(self); if Peddler.MarkWares then Peddler.MarkWares() end end
+local function QuestRewardClick(self) if not IsAltKeyDown() then return end CheckQuestReward(self); if Peddler.RequestMarkWares then Peddler.RequestMarkWares() elseif Peddler.MarkWares then Peddler.MarkWares() end end
 local function SetupQuestFrame(base)
     for i=1,6 do
         local name=base..i
@@ -546,12 +618,23 @@ coreFrame:RegisterEvent("MERCHANT_SHOW")
 coreFrame:RegisterEvent("MERCHANT_CLOSED")
 coreFrame:RegisterEvent("MERCHANT_UPDATE")
 coreFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+coreFrame:RegisterEvent("BAG_UPDATE")
+coreFrame:RegisterEvent("BAG_UPDATE_DELAYED")
+coreFrame:RegisterEvent("ITEM_LOCK_CHANGED")
 
 local function OnUpdateDriver()
     markCounter=markCounter+1
     if markCounter>countLimit then
         markCounter=0
         if Peddler.MarkWares then Peddler.MarkWares() end
+    end
+end
+
+local function RefreshWaresNowOrSoon()
+    if Peddler.RequestMarkWares then
+        Peddler.RequestMarkWares()
+    elseif Peddler.MarkWares then
+        Peddler.MarkWares()
     end
 end
 
@@ -596,6 +679,10 @@ local function HandleEvent(self, event, ...)
     elseif event=="GET_ITEM_INFO_RECEIVED" then
         local itemID, success = arg1, arg2
         if success then AttemptReprice(itemID) end
+        RefreshWaresNowOrSoon()
+
+    elseif event=="BAG_UPDATE" or event=="BAG_UPDATE_DELAYED" or event=="ITEM_LOCK_CHANGED" then
+        RefreshWaresNowOrSoon()
     end
 end
 coreFrame:SetScript("OnEvent", HandleEvent)

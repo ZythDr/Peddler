@@ -2,9 +2,9 @@
 ## Title: Peddler
 ## Notes: Automatically sells designated or auto-classified items and deletes flagged unsellable items.
 ## Author: ZythDr (3.3.5 Port), Cartas & Defmaster (Original Addons)
-## Version: 1.4
-## SavedVariables: ModifierKey, SellLimit, Silent, SilenceSaleSummary, IconPlacement, DeleteUnsellablesEnabled, PeddlerSetupDoneGlobal
-## SavedVariablesPerCharacter: ItemsToSell, UnmarkedItems, AutoSellGreyItems, AutoSellWhiteItems, AutoSellGreenItems, AutoSellBlueItems, AutoSellPurpleItems, AutoSellUnwantedItems, SoulboundOnly, PeddlerSalesHistory, PeddlerHistoryFrameState, PeddlerHistorySessionNet, ItemsToDelete, PeddlerSessionGoldBaseline
+## Version: 1.6
+## SavedVariables: ModifierKey, SellLimit, Silent, SilenceSaleSummary, IconPlacement, DeleteUnsellablesEnabled, PeddlerSetupDoneGlobal, PeddlerWantedItems
+## SavedVariablesPerCharacter: ItemsToSell, UnmarkedItems, AutoSellGreyItems, AutoSellWhiteItems, AutoSellGreenItems, AutoSellBlueItems, AutoSellPurpleItems, AutoSellUnwantedItems, SoulboundOnly, ProtectEquipmentSetItems, PeddlerSalesHistory, PeddlerHistoryFrameState, PeddlerHistorySessionNet, ItemsToDelete, PeddlerSessionGoldBaseline
 
 Utils.lua
 WantedItems.lua

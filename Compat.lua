@@ -37,20 +37,24 @@ local function EnsureDeleteTexture(btn)
 	btn.coins_delete = tex
 end
 
-local function DisplayItemIcons(itemID, unique, btn)
+local function DisplayItemIcons(itemID, unique, btn, bag, slot)
 	if not btn then return end
 	if not unique then
 		if btn.coins then btn.coins:Hide() end
 		if btn.coins_delete then btn.coins_delete:Hide() end
 		return
 	end
-	if Peddler.itemIsToBeSold(itemID, unique) then
+	if Peddler.itemIsToBeSoldAtSlot and Peddler.itemIsToBeSoldAtSlot(itemID, unique, bag, slot) then
+		EnsureSellTexture(btn)
+		btn.coins:Show()
+	elseif not Peddler.itemIsToBeSoldAtSlot and Peddler.itemIsToBeSold(itemID, unique) then
 		EnsureSellTexture(btn)
 		btn.coins:Show()
 	elseif btn.coins then
 		btn.coins:Hide()
 	end
-	if ItemsToDelete and ItemsToDelete[unique] and Peddler.ItemDelete.IsUnsellable(itemID) then
+	if ItemsToDelete and ItemsToDelete[unique] and Peddler.ItemDelete.IsUnsellable(itemID)
+		and not (Peddler.IsEquipmentSetBagSlot and Peddler.IsEquipmentSetBagSlot(bag, slot)) then
 		EnsureDeleteTexture(btn)
 		btn.coins_delete:Show()
 	elseif btn.coins_delete then
@@ -62,24 +66,43 @@ local function CheckItem(bag, slot, btn)
 	if not btn then return end
 	local link = GetContainerItemLink(bag, slot)
 	if not link then
-		DisplayItemIcons(nil, nil, btn)
+		DisplayItemIcons(nil, nil, btn, bag, slot)
 		return
 	end
 	local itemID, unique = Peddler.ParseItemLink(link)
 	if itemID then
-		DisplayItemIcons(itemID, unique, btn)
+		DisplayItemIcons(itemID, unique, btn, bag, slot)
 	else
-		DisplayItemIcons(nil, nil, btn)
+		DisplayItemIcons(nil, nil, btn, bag, slot)
 	end
 end
+
 
 local function CheckButton(btn)
 	local bag, slot
 	if Peddler.GetButtonBagSlot then
 		bag, slot = Peddler.GetButtonBagSlot(btn)
 	end
+	-- Guda Bags: fallback if not yet patched in core
+	if (not bag or not slot) and btn and btn.bagID and btn.slotID then
+		bag, slot = btn.bagID, btn.slotID
+	end
 	if bag and slot then
 		CheckItem(bag, slot, btn)
+	end
+end
+-- Guda Bags support
+local function markGudaBags()
+	local misses = 0
+	for i = 1, 512 do
+		local btn = _G["Guda_ItemButton"..i]
+		if btn then
+			misses = 0
+			CheckButton(btn)
+		else
+			misses = misses + 1
+			if misses >= 32 then break end
+		end
 	end
 end
 
@@ -289,6 +312,8 @@ end
 function Peddler.MarkWares()
 	if IsAddOnLoaded("Baggins") then
 		markBagginsBags()
+	elseif _G.Guda_ItemButton1 then
+		markGudaBags()
 	elseif _G.DragonUI_CombuctorFrame1 or _G.DragonUI_CombuctorItem1 then
 		markDragonUICombuctorBags()
 	elseif IsAddOnLoaded("Combuctor") or IsAddOnLoaded("Bagnon") then
@@ -331,8 +356,32 @@ function Peddler.CompatRegister()
 	if IsAddOnLoaded("Baggins") and _G.Baggins and _G.Baggins.RegisterSignal and not Peddler._bagginsRegistered then
 		Peddler._bagginsRegistered = true
 		_G.Baggins:RegisterSignal("Baggins_BagOpened", function()
-			-- Force one immediate re-mark on next OnUpdate cycle (core will drive)
-			if Peddler.MarkWares then Peddler.MarkWares() end
+			if Peddler.RequestMarkWares then Peddler.RequestMarkWares(0.01) elseif Peddler.MarkWares then Peddler.MarkWares() end
 		end, _G.Baggins)
+	end
+	if not Peddler._bagShowHooksRegistered then
+		Peddler._bagShowHooksRegistered = true
+		local function request()
+			if Peddler.RequestMarkWares then Peddler.RequestMarkWares(0.01) elseif Peddler.MarkWares then Peddler.MarkWares() end
+		end
+		for i=1,(NUM_CONTAINER_FRAMES or 13) do
+			local frame = _G["ContainerFrame"..i]
+			if frame and frame.HookScript then
+				frame:HookScript("OnShow", request)
+			end
+		end
+		local knownFrames = {
+			"BagnonFrameinventory",
+			"CombuctorFrameinventory",
+			"ElvUI_ContainerFrame",
+			"BaudBagContainer1_1",
+			"LiteBagInventoryPanel",
+		}
+		for _, name in ipairs(knownFrames) do
+			local frame = _G[name]
+			if frame and frame.HookScript then
+				frame:HookScript("OnShow", request)
+			end
+		end
 	end
 end
